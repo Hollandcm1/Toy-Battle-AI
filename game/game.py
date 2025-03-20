@@ -29,7 +29,7 @@ def setup_game():
     player1 = Player("Player 1", generate_deck())
     player2 = Player("Player 2", generate_deck())
 
-    battlefield = Battlefield(5, 5)
+    battlefield = Battlefield()
     
     # Set base positions (assuming bases are at opposite ends)
     battlefield.base_positions[player1] = (0, 2)  # Example position
@@ -42,23 +42,80 @@ def game_loop(player1, player2, battlefield):
     players = [player1, player2]
     turn = 0
 
-    # wait for user input
-    input("Press Enter to start the game...")
+    # Initialize Pygame and wait for first event to start the game
+    import pygame
+    pygame.init()
     
     while True:
         current_player = players[turn % 2]
         
-        print(f"\n{current_player.name}'s turn:")
-        current_player.draw_card()
+        # Clear screen and render battlefield for current turn
+        battlefield.render()
+        print(f"\n{current_player.name}'s turn. Choose an action using the buttons below.")
         current_player.show_hand()
+        # Get the current screen
+        screen = pygame.display.get_surface()
+        if screen is None:
+            screen = pygame.display.set_mode((800,600))
+        width, height = screen.get_size()
+        # Define buttons
+        draw_button = pygame.Rect(50, height - 100, 150, 50)
+        play_button = pygame.Rect(250, height - 100, 150, 50)
+        font = pygame.font.SysFont(None, 24)
+        # Draw buttons
+        pygame.draw.rect(screen, (0, 128, 0), draw_button)
+        pygame.draw.rect(screen, (0, 0, 128), play_button)
+        draw_text = font.render("Draw Cards", True, (255,255,255))
+        play_text = font.render("Play Card", True, (255,255,255))
+        screen.blit(draw_text, draw_text.get_rect(center=draw_button.center))
+        screen.blit(play_text, play_text.get_rect(center=play_button.center))
+        pygame.display.flip()
+
+        waiting_for_action = True
+        while waiting_for_action:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    click_pos = pygame.mouse.get_pos()
+                    if draw_button.collidepoint(click_pos):
+                        current_player.draw_card()
+                        current_player.draw_card()
+                        waiting_for_action = False
+                        break
+                    elif play_button.collidepoint(click_pos):
+                        if not current_player.hand:
+                            print("No cards to play.")
+                            waiting_for_action = False
+                            break
+                        card = current_player.hand[0]
+                        print(f"Automatically selected card: {card}")
+                        print("Click on a tile to place the card.")
+                        waiting_for_tile = True
+                        while waiting_for_tile:
+                            for tile_event in pygame.event.get():
+                                if tile_event.type == pygame.MOUSEBUTTONDOWN and tile_event.button == 1:
+                                    click_pos = pygame.mouse.get_pos()
+                                    print("Tile click at:", click_pos)
+                                    for tile, pos in battlefield.tile_positions.items():
+                                        tile_rect = pygame.Rect(pos[0], pos[1], 100, 100)
+                                        if tile_rect.collidepoint(click_pos):
+                                            print(f"Clicked within tile {tile.id} at rect {tile_rect}")
+                                        print(f"Target tile: {tile.id}, Card: {tile.card}, Connections: {[n.id for n in tile.connections]}")
+                                        print(f"Current player: {current_player.name}")
+                                        if tile.card is None and battlefield.is_valid_move(tile, current_player):
+                                                current_player.play_card(card, tile, battlefield)
+                                                waiting_for_tile = False
+                                                waiting_for_action = False
+                                                break
+                                    else:
+                                        print("Invalid tile. Click on a valid tile.")
+                            pygame.time.delay(100)
+                        break
+            pygame.time.delay(100)
         
-        # Example move: Play the first card in hand (if available) at a random position
-        if current_player.hand:
-            card = current_player.hand[0]
-            position = (turn % battlefield.width, turn % battlefield.height)  # Example placement logic
-            current_player.play_card(card, position, battlefield)
-        
-        battlefield.display()
+        # Removed old tile-click handling; placement is now handled within the Play Card button logic.
         
         # Check win condition
         if battlefield.check_win(current_player):
@@ -67,4 +124,4 @@ def game_loop(player1, player2, battlefield):
         
         turn += 1
 
-        input("Press Enter to end turn...")
+        # End turn automatically after action is taken

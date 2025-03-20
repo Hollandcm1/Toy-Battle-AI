@@ -26,10 +26,12 @@ class Player:
             self.draw_card()
     
     def play_card(self, card, position, battlefield):
+        print(f"Attempting to play card {card} at tile {position.id} for player {self.name}")
         if card in self.hand and battlefield.is_valid_move(position, self):
             battlefield.place_card(card, position, self)
             self.hand.remove(card)
-            print(f"{self.name} plays {card} at {position}")
+            print(f"{self.name} plays {card} at tile {position.id}")
+            battlefield.render()
         else:
             print(f"Invalid move by {self.name}")
 
